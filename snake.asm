@@ -425,6 +425,7 @@ main:
 
 jal resetAffichage
 jal newRandomObjectPosition
+
 sw $v0 candy
 sw $v1 candy + 4
 
@@ -461,15 +462,15 @@ tailleGrille:  .word 16        # Nombre de case du jeu dans une dimension.
 # La tête du serpent se trouve à (snakePosX[0], snakePosY[0]) et la queue à
 # (snakePosX[tailleSnake - 1], snakePosY[tailleSnake - 1])
 tailleSnake:   .word 1          # Taille actuelle du serpent.
-snakePosX:     .word 5 : 1024  # Coordonnées X du serpent ordonné de la tête à la queue.
-snakePosY:     .word 5 : 1024  # Coordonnées Y du serpent ordonné de la t.
+snakePosX:     .word 0 : 1024  # Coordonnées X du serpent ordonné de la tête à la queue.
+snakePosY:     .word 0 : 1024  # Coordonnées Y du serpent ordonné de la t.
 
 # Les directions sont représentés sous forme d'entier allant de 0 à 3:
 snakeDir:      .word 1         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
-numObstacles:  .word 0         # Nombre actuel d'obstacle présent dans le jeu.
-obstaclesPosX: .word 0 : 1024  # Coordonnées X des obstacles
-obstaclesPosY: .word 0 : 1024  # Coordonnées Y des obstacles
+numObstacles:  .word 5         # Nombre actuel d'obstacle présent dans le jeu.
+obstaclesPosX: .word 7 : 1024  # Coordonnées X des obstacles
+obstaclesPosY: .word 2 : 1024  # Coordonnées Y des obstacles
 candy:         .word 9, 2      # Position du bonbon (X,Y)
 scoreJeu:      .word 0         # Score obtenu par le joueur
 
@@ -575,7 +576,22 @@ jr $ra
 updateGameStatus:
 
 #jal hiddenCheatFunctionDoingEverythingTheProjectDemandsWithoutHavingToWorkOnIt
+lw $t0 snakePosX
+lw $t1 snakePosY
+lw $t2 candy
+lw $t3 candy + 4
+beq $t0 $t2 cond3
 
+jr $ra
+cond3:
+beq $t1 $t3 cond4
+jr $ra
+cond4:
+sw $ra ($sp)
+jal newRandomObjectPosition
+sw $v0 candy
+sw $v1 candy +4
+lw $ra ($sp)
 jr $ra
 
 ############################### conditionFinJeu ################################
@@ -587,8 +603,6 @@ conditionFinJeu:
 
 # Aide: Remplacer cette instruction permet d'avancer dans le projet.
 li $v0 0
-
-
 
 jr $ra
 
@@ -603,14 +617,5 @@ jr $ra
 affichageFinJeu:
 
 # Fin.
-cond:li $v0 4
-la $a0 print
-syscall
-li $v0 0
- beq $t1 $t3 fin
-jr $ra
-fin:
-li $t0 0
-sw $t0 snakePosX
-sw $t0 snakePosY
+
 jr $ra
