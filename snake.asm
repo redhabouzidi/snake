@@ -425,6 +425,13 @@ main:
 
 jal resetAffichage
 jal newRandomObjectPosition
+li $t1 1
+li $t0 0
+sw $t1 snakePosX +4
+sw $t0 snakePosY +4
+
+sw $t0 snakePosX +8
+sw $t0 snakePosY +8
 
 sw $v0 candy
 sw $v1 candy + 4
@@ -466,7 +473,7 @@ snakePosX:     .word 0 : 1024  # Coordonnées X du serpent ordonné de la tête 
 snakePosY:     .word 0 : 1024  # Coordonnées Y du serpent ordonné de la t.
 
 # Les directions sont représentés sous forme d'entier allant de 0 à 3:
-snakeDir:      .word 1         # Direction du serpent: 0 (haut), 1 (droite)
+snakeDir:      .word 0         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
 numObstacles:  .word 5         # Nombre actuel d'obstacle présent dans le jeu.
 obstaclesPosX: .word 7 : 1024  # Coordonnées X des obstacles
@@ -490,7 +497,17 @@ scoreJeu:      .word 0         # Score obtenu par le joueur
 majDirection:
 
 # En haut, ... en bas, ... à gauche, ... à droite, ... ces soirées là ...
+subu $sp $sp 4
+sw $ra ($sp)
+lw $t4 snakePosX
+lw $t5 snakePosY
+jal updateCorp
 
+li $t1 4
+bgt $a0 $t0 skip1
+sw $a0 snakeDir
+skip1:
+lw $a0 snakeDir
 li $t1 0
 beq $a0 $t1 Haut
 li $t1 2
@@ -500,68 +517,79 @@ beq $a0 $t1 Gauche
 li $t1 1
 beq $a0 $t1 Droite
 li $t1 0
-beq $s0 $t1 HautS0
-li $t1 2
-beq $s0 $t1 BasS0
-li $t1 3
-beq $s0 $t1 GaucheS0
-li $t1 1
-beq $s0 $t1 DroiteS0
-
 
 
 j End
 
 Haut:
-lw $t4 snakePosX
+
 addi $t4 $t4 1
 sw $t4 snakePosX
 move $s0 $a0
 j End
 
 Droite:
-lw $t4 snakePosY
-addi $t4 $t4 1
-sw $t4 snakePosY
+addi $t5 $t5 1
+sw $t5 snakePosY
 move $s0 $a0
 j End
 
 Bas:
-lw $t4 snakePosX
+
 addi $t4 $t4 -1
 sw $t4 snakePosX
 move $s0 $a0
 j End
 
 Gauche:
-lw $t4 snakePosY
-addi $t4 $t4 -1
-sw $t4 snakePosY
+
+addi $t5 $t5 -1
+sw $t5 snakePosY
 move $s0 $a0
-j End
-HautS0:
-lw $t4 snakePosX
-addi $t4 $t4 1
-sw $t4 snakePosX
-j End
 
-DroiteS0:
-lw $t4 snakePosY
-addi $t4 $t4 1
-sw $t4 snakePosY
-j End
-
-BasS0:
-lw $t4 snakePosX
-addi $t4 $t4 -1
-sw $t4 snakePosX
-j End
-
-GaucheS0:
-lw $t4 snakePosY
-addi $t4 $t4 -1
-sw $t4 snakePosY
 End:
+
+lw $ra 0($sp)
+addu $sp $sp 4
+jr $ra
+
+
+updateCorp:
+subu $sp $sp 4
+sw $ra ($sp)
+
+lw $t6 tailleSnake
+li $t0 1
+ble $t6 $t0 skip3
+subi $t6 $t6 1
+
+li $t0 4
+mul $t7 $t6 $t0
+lw $t2 snakePosX($7)
+lw $t1 snakePosY($7)
+sw $t2 lastSnakePiece
+sw $t1 lastSnakePiece +4
+la $t1 snakePosX
+la $t2 snakePosY
+
+loop3:beqz $t6 skip3
+li $v0 4
+move $s0 $a0 
+la $a0 print
+syscall
+move $a0 $s0
+mul $t7 $t6 $t0
+add $t8 $t7 $t1
+lw $t9 -4($t8)
+sw $t9 0($t8)
+add $t8 $t7 $t2
+lw $t9 -4($t8)
+sw $t9 0($t8)
+subi $t6 $t6 1
+j loop3
+skip3:
+lw $ra 0($sp)
+addu $sp $sp 4
 jr $ra
 
 ############################### updateGameStatus ###############################
@@ -587,11 +615,17 @@ cond3:
 beq $t1 $t3 cond4
 jr $ra
 cond4:
+subu $sp $sp 4
 sw $ra ($sp)
 jal newRandomObjectPosition
 sw $v0 candy
 sw $v1 candy +4
+lw $t4 tailleSnake
+addi $t4 $t4 1
+sw $t4 tailleSnake
+
 lw $ra ($sp)
+addu $sp $sp 4
 jr $ra
 
 ############################### conditionFinJeu ################################
