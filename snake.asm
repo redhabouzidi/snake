@@ -87,12 +87,12 @@ frameBuffer: .word 0 : 1024  # Frame buffer
 #   00 <= yy <= ff est la couleur verte en hexadécimal
 #   00 <= zz <= ff est la couleur bleue en hexadécimal
 
-colors: .word 0x00000000, 0x00ff0000, 0x00ffffff, 0x00ff00ff, 0x00396239, 0x00FFFF00, 0x000000FF, 0x0000FFFF, 0x00800080, 0x00FFA500, 0x00f00e0e
+colors: .word 0x00000000, 0x00ff0000, 0x00396239, 0x00ff00ff, 0xff00ff00, 0x00FFFF00, 0x000000FF, 0x0000FFFF, 0x00800080, 0x00FFA500, 0x00f00e0e
 .eqv black 0
 .eqv red   4
-.eqv green 8
+.eqv greenV2 8
 .eqv rose  12
-.eqv greenV2  16
+.eqv green  16
 .eqv yellow 20
 .eqv blue 24
 .eqv cyan 28
@@ -168,14 +168,16 @@ lw $a2 snakePosY($s1)
 jal printColorAtPosition
 li $s1 4
 
+
 PSLoop:
 bge $s1 $s0 endPSLoop
-  li $v0 42
-  li $a0 1
-  li $a1 6
-  syscall
-  mul $a0 $s1 $a0
-  lw $a0 colors+greenV2($a0)
+  li $t1 7
+  srl $s2 $s1 2
+  div $s2 $t1
+  mfhi $s2
+  li $a0 4
+  mul $a0 $s2 $a0
+  lw $a0 colors+green($a0)
   lw $a1 snakePosX($s1)
   lw $a2 snakePosY($s1)
   jal printColorAtPosition
@@ -479,10 +481,10 @@ snakePosY:     .word 0 : 1024  # Coordonnées Y du serpent ordonné de la t.
 # Les directions sont représentés sous forme d'entier allant de 0 à 3:
 snakeDir:      .word 2         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
-numObstacles:  .word 5         # Nombre actuel d'obstacle présent dans le jeu.
-obstaclesPosX: .word 7 : 1024  # Coordonnées X des obstacles
-obstaclesPosY: .word 2 : 1024  # Coordonnées Y des obstacles
-candy:         .word 9, 2      # Position du bonbon (X,Y)
+numObstacles:  .word 0         # Nombre actuel d'obstacle présent dans le jeu.
+obstaclesPosX: .word 0 : 1024  # Coordonnées X des obstacles
+obstaclesPosY: .word 0 : 1024  # Coordonnées Y des obstacles
+candy:         .word 0, 0      # Position du bonbon (X,Y)
 scoreJeu:      .word 0         # Score obtenu par le joueur
 
 .text
@@ -631,10 +633,28 @@ lw $t6 lastSnakePiece +4
 sw $t6 snakePosY($t5)
 addi $t4 $t4 1
 sw $t4 tailleSnake
+jal updateObstacles
+
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
 
+
+updateObstacles:
+subi $sp $sp 4
+sw $ra ($sp)
+jal newRandomObjectPosition
+lw $t1 numObstacles
+addi $t1 $t1 1
+sw $t1 numObstacles
+subu $t1 $t1 1
+li $t2 4
+mul $t1 $t1 $t2
+sw $v0 obstaclesPosX($t1)
+sw $v1 obstaclesPosY($t1)
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
 ############################### conditionFinJeu ################################
 # Paramètres: Aucun
 # Retour: $v0 La valeur 0 si le jeu doit continuer ou toute autre valeur sinon.
@@ -643,20 +663,50 @@ jr $ra
 conditionFinJeu:
 
 # Aide: Remplacer cette instruction permet d'avancer dans le projet.
+subu $sp $sp 4
+sw $ra ($sp)
 li $v0 0
 li $t0 16
 lw $t1 snakePosY
 beq $t1 $t0 jEndCond
 li $t0 -1
 beq $t1 $t0 jEndCond 
-lw $t1 snakePosX
-beq $t1 $t0 jEndCond
+lw $t2 snakePosX
+beq $t2 $t0 jEndCond
 li $t0 16
-beq $t1 $t0 jEndCond
-j jProcCond
-jEndCond:li $v0 1
-jProcCond:jr $ra
+beq $t2 $t0 jEndCond
+jal condObstacles
 
+jProcCond:
+sw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+jEndCond:li $v0 1
+j jProcCond
+
+condObstacles: 
+lw $t0 numObstacles
+subu $t0 $t0 1
+li $t3 4
+li $t7 -1
+loopObst:beq $t0 $t7 endNumObst
+mul $t4 $t0 $t3
+lw $t5 obstaclesPosX($t4)
+lw $t4 obstaclesPosY($t4)
+beq $t5 $t2 secondCondObst
+subu $t0 $t0 1
+j loopObst
+secondCondObst:beq $t4 $t1 finCondObst
+subu $t0 $t0 1
+j loopObst
+endNumObst:
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+finCondObst:
+li $v0 1
+j endNumObst
 ############################### affichageFinJeu ################################
 # Paramètres: Aucun
 # Retour: Aucun
