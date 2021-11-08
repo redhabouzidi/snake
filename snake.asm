@@ -676,7 +676,7 @@ beq $t2 $t0 jEndCond
 li $t0 16
 beq $t2 $t0 jEndCond
 jal condObstacles
-
+jal condCorp
 jProcCond:
 sw $ra ($sp)
 addu $sp $sp 4
@@ -707,6 +707,11 @@ jr $ra
 finCondObst:
 li $v0 1
 j endNumObst
+
+condCorp:
+subu $sp $sp 4
+lw $t3 tailleSnake
+subu $t3 $t3 1
 ############################### affichageFinJeu ################################
 # Paramètres: Aucun
 # Retour: Aucun
