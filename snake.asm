@@ -87,12 +87,18 @@ frameBuffer: .word 0 : 1024  # Frame buffer
 #   00 <= yy <= ff est la couleur verte en hexadécimal
 #   00 <= zz <= ff est la couleur bleue en hexadécimal
 
-colors: .word 0x00000000, 0x00ff0000, 0xff00ff00, 0x00396239, 0x00ff00ff
+colors: .word 0x00000000, 0x00ff0000, 0x00ffffff, 0x00ff00ff, 0x00396239, 0x00FFFF00, 0x000000FF, 0x0000FFFF, 0x00800080, 0x00FFA500, 0x00f00e0e
 .eqv black 0
 .eqv red   4
 .eqv green 8
-.eqv greenV2  12
-.eqv rose  16
+.eqv rose  12
+.eqv greenV2  16
+.eqv yellow 20
+.eqv blue 24
+.eqv cyan 28
+.eqv purple 32
+.eqv orange
+.eqv redV2
 print: .asciiz "CA MARCHE BIEN"
 # Dernière position connue de la queue du serpent.
 
@@ -164,7 +170,12 @@ li $s1 4
 
 PSLoop:
 bge $s1 $s0 endPSLoop
-  lw $a0 colors + green
+  li $v0 42
+  li $a0 1
+  li $a1 6
+  syscall
+  mul $a0 $s1 $a0
+  lw $a0 colors+greenV2($a0)
   lw $a1 snakePosX($s1)
   lw $a2 snakePosY($s1)
   jal printColorAtPosition
@@ -363,9 +374,9 @@ j newRandomObjectPosition
 
 getInputVal:
 lw $t0 0xffff0004
-li $t1 115
-beq $t0 $t1 GIhaut
 li $t1 122
+beq $t0 $t1 GIhaut
+li $t1 115
 beq $t0 $t1 GIbas
 li $t1 113
 beq $t0 $t1 GIgauche
@@ -425,13 +436,6 @@ main:
 
 jal resetAffichage
 jal newRandomObjectPosition
-li $t1 1
-li $t0 0
-sw $t1 snakePosX +4
-sw $t0 snakePosY +4
-
-sw $t0 snakePosX +8
-sw $t0 snakePosY +8
 
 sw $v0 candy
 sw $v1 candy + 4
@@ -473,7 +477,7 @@ snakePosX:     .word 0 : 1024  # Coordonnées X du serpent ordonné de la tête 
 snakePosY:     .word 0 : 1024  # Coordonnées Y du serpent ordonné de la t.
 
 # Les directions sont représentés sous forme d'entier allant de 0 à 3:
-snakeDir:      .word 0         # Direction du serpent: 0 (haut), 1 (droite)
+snakeDir:      .word 2         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
 numObstacles:  .word 5         # Nombre actuel d'obstacle présent dans le jeu.
 obstaclesPosX: .word 7 : 1024  # Coordonnées X des obstacles
@@ -504,7 +508,7 @@ lw $t5 snakePosY
 jal updateCorp
 
 li $t1 4
-bgt $a0 $t0 skip1
+beq $a0 $t1 skip1
 sw $a0 snakeDir
 skip1:
 lw $a0 snakeDir
@@ -523,7 +527,7 @@ j End
 
 Haut:
 
-addi $t4 $t4 1
+addi $t4 $t4 -1
 sw $t4 snakePosX
 move $s0 $a0
 j End
@@ -536,7 +540,7 @@ j End
 
 Bas:
 
-addi $t4 $t4 -1
+addi $t4 $t4 1
 sw $t4 snakePosX
 move $s0 $a0
 j End
@@ -565,19 +569,14 @@ subi $t6 $t6 1
 
 li $t0 4
 mul $t7 $t6 $t0
-lw $t2 snakePosX($7)
-lw $t1 snakePosY($7)
+lw $t2 snakePosX($t7)
+lw $t1 snakePosY($t7)
 sw $t2 lastSnakePiece
 sw $t1 lastSnakePiece +4
 la $t1 snakePosX
 la $t2 snakePosY
 
 loop3:beqz $t6 skip3
-li $v0 4
-move $s0 $a0 
-la $a0 print
-syscall
-move $a0 $s0
 mul $t7 $t6 $t0
 add $t8 $t7 $t1
 lw $t9 -4($t8)
@@ -604,6 +603,8 @@ jr $ra
 updateGameStatus:
 
 #jal hiddenCheatFunctionDoingEverythingTheProjectDemandsWithoutHavingToWorkOnIt
+subu $sp $sp 4
+sw $ra ($sp)
 lw $t0 snakePosX
 lw $t1 snakePosY
 lw $t2 candy
@@ -615,15 +616,21 @@ cond3:
 beq $t1 $t3 cond4
 jr $ra
 cond4:
-subu $sp $sp 4
-sw $ra ($sp)
+
 jal newRandomObjectPosition
 sw $v0 candy
 sw $v1 candy +4
 lw $t4 tailleSnake
+li $t1 4
+mul $t5 $t4 $t1
+la $t2 snakePosX
+lw $t6 lastSnakePiece
+sw $t6 snakePosX($t5)
+la $t2 snakePosY
+lw $t6 lastSnakePiece +4
+sw $t6 snakePosY($t5)
 addi $t4 $t4 1
 sw $t4 tailleSnake
-
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -637,8 +644,18 @@ conditionFinJeu:
 
 # Aide: Remplacer cette instruction permet d'avancer dans le projet.
 li $v0 0
-
-jr $ra
+li $t0 16
+lw $t1 snakePosY
+beq $t1 $t0 jEndCond
+li $t0 -1
+beq $t1 $t0 jEndCond 
+lw $t1 snakePosX
+beq $t1 $t0 jEndCond
+li $t0 16
+beq $t1 $t0 jEndCond
+j jProcCond
+jEndCond:li $v0 1
+jProcCond:jr $ra
 
 ############################### affichageFinJeu ################################
 # Paramètres: Aucun
