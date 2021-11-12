@@ -710,8 +710,29 @@ j endNumObst
 
 condCorp:
 subu $sp $sp 4
+sw $ra ($sp)
 lw $t3 tailleSnake
 subu $t3 $t3 1
+li $t4 0
+li $t5 4
+loopCond:ble $t3 $t4 condContinue
+mul $t6 $t5 $t3
+lw $t7 snakePosX($t6)
+beq $t2 $t7 condArret
+jSuite:
+subu $t3 $t3 1
+j loopCond
+condContinue:lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+condArret:
+lw $t7 snakePosY($t6)
+beq $t1 $t7 Arret
+j jSuite
+Arret:
+li $v0 1
+j condContinue
 ############################### affichageFinJeu ################################
 # Paramètres: Aucun
 # Retour: Aucun
