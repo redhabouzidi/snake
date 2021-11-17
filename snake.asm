@@ -99,7 +99,8 @@ colors: .word 0x00000000, 0x00ff0000, 0x00396239, 0x00ff00ff, 0xff00ff00, 0x00FF
 .eqv purple 32
 .eqv orange
 .eqv redV2
-print: .asciiz "CA MARCHE BIEN"
+score: .asciiz "Votre score est de :"
+
 # Dernière position connue de la queue du serpent.
 
 lastSnakePiece: .word 0, 0
@@ -170,7 +171,7 @@ li $s1 4
 
 
 PSLoop:
-bge $s1 $s0 endPSLoop
+  bge $s1 $s0 endPSLoop
   li $t1 7
   srl $s2 $s1 2
   div $s2 $t1
@@ -426,6 +427,149 @@ j SMloop
 endSMloop:
 jr $ra
 
+getLevel:
+subu $sp $sp 4
+sw $ra ($sp)
+reset:
+li $a0 100
+jal sleepMillisec
+jal resetAffichage
+bne $s6 0 l2
+jal printLevel1
+j read
+l2:bne $s6 1 l3
+jal printLevel2
+j read
+l3:bne $s6 2 l4
+jal printLevel3
+j read
+l4:bne $s6 3 l5
+jal printLevel4
+j read
+l5:bne $s6 4 l6
+jal printLevel5
+j read
+l6:bne $s6 5 l7
+jal printLevel6
+j read
+l7:bne $s6 6 l8
+jal printLevel7
+j read
+l8:bne $s6 7 lQ
+jal printLevel8
+j read
+lQ:
+jal printLevelQ
+j read
+
+
+read:
+lw $t0 0xffff0004
+beq $t0 122 levelHaut#z
+beq $t0 115 levelBas#s
+beq $t0 113 levelGauche #q
+beq $t0 100 levelDroite #d
+beq $t0 10 confirmLevel
+j reset
+confirmLevel:
+beq $s6 0 level1
+beq $s6 1 level2
+beq $s6 2 level3
+beq $s6 3 level4
+beq $s6 4 level5
+beq $s6 5 level6
+beq $s6 6 level7
+beq $s6 7 level8
+beq $s6 8 exit
+endLevel:
+subi $t6 $t6 1
+loopLevel:beq $t6 -1 skipLevel
+jal newRandomObjectPosition
+mul $t2 $t6 4
+sw $v0 obstaclesPosX($t2)
+sw $v1 obstaclesPosY($t2)
+subi $t6 $t6 1
+j loopLevel
+skipLevel:
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+levelHaut:
+la $t8 0xffff0004
+li $t9 0
+sw $t9 ($t8)
+subi $s6 $s6 4
+j test
+levelBas:
+la $t8 0xffff0004
+li $t9 0
+sw $t9 ($t8)
+addi $s6 $s6 4
+j test
+levelDroite:
+la $t8 0xffff0004
+li $t9 0
+sw $t9 ($t8)
+addi $s6 $s6 1
+j test
+levelGauche:
+la $t8 0xffff0004
+li $t9 0
+sw $t9 ($t8)
+subi $s6 $s6 1
+j test
+
+test:
+addi $s6 $s6 9
+li $t8 9
+div $s6 $t8
+mfhi $s6
+j reset
+
+level1:
+li $t6 2
+sw $t6 numObstacles
+j endLevel
+level2:
+li $s5 450
+li $t6 5
+sw $t6 numObstacles
+j endLevel
+level3:
+li $s5 400
+li $t6 3
+sw $t6 numObstacles
+j endLevel
+level4:
+li $s5 350
+li $t6 6
+sw $t6 numObstacles
+j endLevel
+level5:
+li $s5 300
+li $t6 4
+sw $t6 numObstacles
+j endLevel
+level6:
+li $s5 250
+li $t6 8
+sw $t6 numObstacles
+j endLevel
+level7:
+li $s5 200
+li $t6 5
+sw $t6 numObstacles
+j endLevel
+level8:
+li $s5 150
+li $t6 6
+sw $t6 numObstacles
+j endLevel
+
+
+
+
 ##################################### main #####################################
 # Description: Boucle principal du jeu
 # Paramètres: Aucun
@@ -438,10 +582,13 @@ main:
 
 jal resetAffichage
 jal newRandomObjectPosition
-
+li $s5 500
 sw $v0 candy
 sw $v1 candy + 4
-
+jal printLevel1
+li $s6 0
+jal getLevel
+jal resetAffichage
 # Boucle de jeu
 
 mainloop:
@@ -453,12 +600,27 @@ jal updateGameStatus
 jal conditionFinJeu
 bnez $v0 gameOver
 jal printGame
-li $a0 500
+move $a0 $s5
 jal sleepMillisec
 j mainloop
 
 gameOver:
 jal affichageFinJeu
+li $a0 10000
+jal sleepMillisec
+li $t0 0
+li $t1 1
+sw $t1 snakeDir
+sw $t1 tailleSnake
+sw $t0 snakePosX
+sw $t0 snakePosY
+sw $t0 scoreJeu
+la $t8 0xffff0004
+li $t9 0
+sw $t9 ($t8)
+j main
+exit:
+jal resetAffichage
 li $v0 10
 syscall
 
@@ -479,13 +641,14 @@ snakePosX:     .word 0 : 1024  # Coordonnées X du serpent ordonné de la tête 
 snakePosY:     .word 0 : 1024  # Coordonnées Y du serpent ordonné de la t.
 
 # Les directions sont représentés sous forme d'entier allant de 0 à 3:
-snakeDir:      .word 2         # Direction du serpent: 0 (haut), 1 (droite)
+snakeDir:      .word 1         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
 numObstacles:  .word 0         # Nombre actuel d'obstacle présent dans le jeu.
 obstaclesPosX: .word 0 : 1024  # Coordonnées X des obstacles
 obstaclesPosY: .word 0 : 1024  # Coordonnées Y des obstacles
-candy:         .word 0, 0      # Position du bonbon (X,Y)
-scoreJeu:      .word 0         # Score obtenu par le joueur
+candy:         .word 0, 
+0      # Position du bonbon (X,Y)
+scoreJeu:      .word 2220         # Score obtenu par le joueur
 
 .text
 
@@ -501,63 +664,97 @@ scoreJeu:      .word 0         # Score obtenu par le joueur
 ################################################################################
 
 majDirection:
-
-# En haut, ... en bas, ... à gauche, ... à droite, ... ces soirées là ...
 subu $sp $sp 4
 sw $ra ($sp)
-lw $t4 snakePosX
-lw $t5 snakePosY
-jal updateCorp
+beq $a0 4 skipDir
+lw $t1 snakeDir
+beq $t1 0 condHaut
+beq $t1 1 condDroite
+beq $t1 2 condBas
+beq $t1 3 condGauche
 
-li $t1 4
-beq $a0 $t1 skip1
+condHaut:
+beq $a0 2 skipDir
 sw $a0 snakeDir
-skip1:
-lw $a0 snakeDir
-li $t1 0
-beq $a0 $t1 Haut
-li $t1 2
-beq $a0 $t1 Bas
-li $t1 3
-beq $a0 $t1 Gauche
-li $t1 1
-beq $a0 $t1 Droite
-li $t1 0
+j skipDir
+condDroite:
+beq $a0 3 skipDir
+sw $a0 snakeDir
+j skipDir
+condBas:
+beq $a0 0 skipDir
+sw $a0 snakeDir
+j skipDir
+condGauche:
+beq $a0 1 skipDir
+sw $a0 snakeDir
+j skipDir
 
-
-j End
-
-Haut:
-
-addi $t4 $t4 -1
-sw $t4 snakePosX
-move $s0 $a0
-j End
-
-Droite:
-addi $t5 $t5 1
-sw $t5 snakePosY
-move $s0 $a0
-j End
-
-Bas:
-
-addi $t4 $t4 1
-sw $t4 snakePosX
-move $s0 $a0
-j End
-
-Gauche:
-
-addi $t5 $t5 -1
-sw $t5 snakePosY
-move $s0 $a0
-
-End:
-
-lw $ra 0($sp)
+skipDir:
+lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
+
+
+
+
+
+
+
+
+# En haut, ... en bas, ... à gauche, ... à droite, ... ces soirées là ...
+
+
+
+
+
+############################### updateGameStatus ###############################
+# Paramètres: Aucun
+# Retour: Aucun
+# Effet de bord: L'état du jeu est mis à jour d'un pas de temps. Il faut donc :
+#                  - Faire bouger le serpent
+#                  - Tester si le serpent à manger le bonbon
+#                    - Si oui déplacer le bonbon et ajouter un nouvel obstacle
+################################################################################
+
+updateGameStatus:
+
+#jal hiddenCheatFunctionDoingEverythingTheProjectDemandsWithoutHavingToWorkOnIt
+subu $sp $sp 4
+sw $ra ($sp)
+
+jal updateSnake
+lw $t0 snakePosX
+lw $t1 snakePosY
+lw $t2 candy
+lw $t3 candy + 4
+beq $t0 $t2 cond3
+skipGameStatus:
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+cond3:
+beq $t1 $t3 cond4
+j skipGameStatus
+cond4:
+jal newRandomObjectPosition
+sw $v0 candy
+sw $v1 candy +4
+lw $t4 tailleSnake
+li $t1 4
+mul $t5 $t4 $t1
+lw $t6 lastSnakePiece
+sw $t6 snakePosX($t5)
+lw $t6 lastSnakePiece +4
+sw $t6 snakePosY($t5)
+addi $t4 $t4 1
+sw $t4 tailleSnake
+lw $t4 scoreJeu
+addi $t4 $t4 1
+sw $t4 scoreJeu
+
+j skipGameStatus
+
 
 
 updateCorp:
@@ -565,16 +762,9 @@ subu $sp $sp 4
 sw $ra ($sp)
 
 lw $t6 tailleSnake
-li $t0 1
-ble $t6 $t0 skip3
 subi $t6 $t6 1
 
 li $t0 4
-mul $t7 $t6 $t0
-lw $t2 snakePosX($t7)
-lw $t1 snakePosY($t7)
-sw $t2 lastSnakePiece
-sw $t1 lastSnakePiece +4
 la $t1 snakePosX
 la $t2 snakePosY
 
@@ -593,65 +783,43 @@ lw $ra 0($sp)
 addu $sp $sp 4
 jr $ra
 
-############################### updateGameStatus ###############################
-# Paramètres: Aucun
-# Retour: Aucun
-# Effet de bord: L'état du jeu est mis à jour d'un pas de temps. Il faut donc :
-#                  - Faire bouger le serpent
-#                  - Tester si le serpent à manger le bonbon
-#                    - Si oui déplacer le bonbon et ajouter un nouvel obstacle
-################################################################################
-
-updateGameStatus:
-
-#jal hiddenCheatFunctionDoingEverythingTheProjectDemandsWithoutHavingToWorkOnIt
+updateSnake:
 subu $sp $sp 4
 sw $ra ($sp)
-lw $t0 snakePosX
-lw $t1 snakePosY
-lw $t2 candy
-lw $t3 candy + 4
-beq $t0 $t2 cond3
+lw $t4 snakePosX
+lw $t5 snakePosY
+jal updateCorp
+lw $a0 snakeDir
+beq $a0 0 Haut
+beq $a0 1 Droite
+beq $a0 2 Bas
+beq $a0 3 Gauche
+j End
 
-jr $ra
-cond3:
-beq $t1 $t3 cond4
-jr $ra
-cond4:
+Haut:
 
-jal newRandomObjectPosition
-sw $v0 candy
-sw $v1 candy +4
-lw $t4 tailleSnake
-li $t1 4
-mul $t5 $t4 $t1
-la $t2 snakePosX
-lw $t6 lastSnakePiece
-sw $t6 snakePosX($t5)
-la $t2 snakePosY
-lw $t6 lastSnakePiece +4
-sw $t6 snakePosY($t5)
+addi $t4 $t4 -1
+sw $t4 snakePosX
+j End
+
+Droite:
+addi $t5 $t5 1
+sw $t5 snakePosY
+j End
+
+Bas:
+
 addi $t4 $t4 1
-sw $t4 tailleSnake
-jal updateObstacles
+sw $t4 snakePosX
+j End
 
-lw $ra ($sp)
-addu $sp $sp 4
-jr $ra
+Gauche:
 
+addi $t5 $t5 -1
+sw $t5 snakePosY
 
-updateObstacles:
-subi $sp $sp 4
-sw $ra ($sp)
-jal newRandomObjectPosition
-lw $t1 numObstacles
-addi $t1 $t1 1
-sw $t1 numObstacles
-subu $t1 $t1 1
-li $t2 4
-mul $t1 $t1 $t2
-sw $v0 obstaclesPosX($t1)
-sw $v1 obstaclesPosY($t1)
+End:
+
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -678,7 +846,7 @@ beq $t2 $t0 jEndCond
 jal condObstacles
 jal condCorp
 jProcCond:
-sw $ra ($sp)
+lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
 
@@ -701,8 +869,6 @@ secondCondObst:beq $t4 $t1 finCondObst
 subu $t0 $t0 1
 j loopObst
 endNumObst:
-lw $ra ($sp)
-addu $sp $sp 4
 jr $ra
 finCondObst:
 li $v0 1
@@ -713,16 +879,16 @@ subu $sp $sp 4
 sw $ra ($sp)
 lw $t3 tailleSnake
 subu $t3 $t3 1
-li $t4 0
 li $t5 4
-loopCond:ble $t3 $t4 condContinue
+loopCond:blt $t3 $t5 condContinue
 mul $t6 $t5 $t3
 lw $t7 snakePosX($t6)
 beq $t2 $t7 condArret
 jSuite:
 subu $t3 $t3 1
 j loopCond
-condContinue:lw $ra ($sp)
+condContinue:
+lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
 
@@ -731,6 +897,8 @@ lw $t7 snakePosY($t6)
 beq $t1 $t7 Arret
 j jSuite
 Arret:
+
+
 li $v0 1
 j condContinue
 ############################### affichageFinJeu ################################
@@ -742,7 +910,1044 @@ j condContinue
 ################################################################################
 
 affichageFinJeu:
+subu $sp $sp 4
+sw $ra ($sp)
+jal resetAffichage
+lw $a0 colors + greenV2
+li $a1 0
+li $a2 0
+jal printColorAtPosition
+li $a2 1
+jal printColorAtPosition
+li $a2 4
+jal printColorAtPosition
+li $a2 7
+jal printColorAtPosition
+li $a2 10
+jal printColorAtPosition
+li $a2 11
+jal printColorAtPosition
+li $a2 12
+jal printColorAtPosition
+li $a2 14
+jal printColorAtPosition
+li $a2 15
+jal printColorAtPosition
+li $a1 1
+li $a2 0
+jal printColorAtPosition
+li $a2 3
+jal printColorAtPosition
+li $a2 6
+jal printColorAtPosition
+li $a2 8
+jal printColorAtPosition
+li $a2 10
+jal printColorAtPosition
+li $a2 12
+jal printColorAtPosition
+li $a2 14
+jal printColorAtPosition
+li $a1 2
+li $a2 0
+jal printColorAtPosition
+li $a2 1
+jal printColorAtPosition
+li $a2 3
+jal printColorAtPosition
+li $a2 6
+jal printColorAtPosition
+li $a2 8
+jal printColorAtPosition
+li $a2 10
+jal printColorAtPosition
+li $a2 11
+jal printColorAtPosition
+li $a2 12
+jal printColorAtPosition
+li $a2 14
+jal printColorAtPosition
+li $a2 15
+jal printColorAtPosition
+li $a1 3
+li $a2 1
+jal printColorAtPosition
+li $a2 3
+jal printColorAtPosition
+li $a2 6
+jal printColorAtPosition
+li $a2 8
+jal printColorAtPosition
+li $a2 10
+jal printColorAtPosition
+li $a2 11
+jal printColorAtPosition
+li $a2 14
+jal printColorAtPosition
+li $a1 4
+li $a2 0
+jal printColorAtPosition
+li $a2 1
+jal printColorAtPosition
+li $a2 4
+jal printColorAtPosition
+li $a2 7
+jal printColorAtPosition
+li $a2 10
+jal printColorAtPosition
+li $a2 12
+jal printColorAtPosition
+li $a2 14
+jal printColorAtPosition
+li $a2 15
+jal printColorAtPosition
+li $t2 0
+li $a1 8
+lw $t1 scoreJeu
+lw $a0 colors+green
+back:div $t1 $t1 10
+bgtz $t1 increment
+beq $t2 0 choix0
+beq $t2 1 choix1
+beq $t2 2 choix2
+beq $t2 3 choix3
 
+choix0:
+li $a2 7
+lw $a3 scoreJeu
+jal printNum
+j suite
+choix1:
+lw $a3 scoreJeu
+li $a2 5
+li $t3 10
+div $a3 $t3 
+mflo $a3
+mfhi $t9
+jal printNum
+move $a3 $t9
+li $a2 9
+li $a1 8
+jal printNum
+j suite
+choix2:
+lw $a3 scoreJeu
+li $a2 3
+li $t3 100
+div $a3 $t3 
+mflo $a3
+mfhi $t9 
+jal printNum
+move $a3 $t9
+li $t3 10
+div $a3 $t3
+mflo $a3
+mfhi $t9 
+li $a2 7
+li $a1 8
+jal printNum
+move $a3 $t9
+li $a2 11
+li $a1 8
+jal printNum
+j suite
+choix3:
+lw $a3 scoreJeu
+li $a2 0
+li $t3 1000
+div $a3 $t3 
+mflo $a3
+mfhi $t9 
+jal printNum
+move $a3 $t9
+li $t3 100
+div $a3 $t3
+mflo $a3
+mfhi $t9
+li $a2 4
+li $a1 8
+jal printNum
+move $a3 $t9
+li $t3 10
+div $a3 $t3
+mflo $a3
+mfhi $t9
+li $a2 8
+li $a1 8
+jal printNum
+move $a3 $t9
+li $a2 12
+li $a1 8
+jal printNum
 # Fin.
+suite:
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+increment:
+addi $t2 $t2 1
+j back
 
+
+
+print0:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print1:
+
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+j back1
+print2:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print3:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print4:
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+j back1
+
+print5:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print6:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print7:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+j back1
+print8:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+print9:
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 2
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subu $a2 $a2 2
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+printSel:
+addi $a1 $a1 5
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+j back1
+printNum:
+subu $sp $sp 4
+sw $ra ($sp)
+beq $a3 0 print0
+beq $a3 1 print1
+beq $a3 2 print2
+beq $a3 3 print3
+beq $a3 4 print4
+beq $a3 5 print5
+beq $a3 6 print6
+beq $a3 7 print7
+beq $a3 8 print8
+beq $a3 9 print9
+beq $a3 -1 printSel
+back1:
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel1:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 0
+li $a2 0
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel2:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 0
+li $a2 4
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel3:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 0
+li $a2 8
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel4:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 0
+li $a2 12
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel5:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 6
+li $a2 0
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel6:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 6
+li $a2 4
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel7:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 6
+li $a2 8
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevel8:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 6
+li $a2 12
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+printLevelQ:
+
+subu $sp $sp 4
+sw $ra ($sp)
+li $a1 10
+li $a2 6
+lw $a0 colors+red
+li $a3 -1
+jal printNum
+lw $a0 colors+green
+li $a1 0
+li $a2 0
+li $a3 1
+jal printNum
+li $a1 0
+li $a2 4
+li $a3 2
+jal printNum
+li $a1 0
+li $a2 8
+li $a3 3
+jal printNum
+li $a1 0
+li $a2 12
+li $a3 4
+jal printNum
+li $a1 6
+li $a2 0
+li $a3 5
+jal printNum
+li $a1 6
+li $a2 4
+li $a3 6
+jal printNum
+li $a1 6
+li $a2 8
+li $a3 7
+jal printNum
+li $a1 6
+li $a2 12
+li $a3 8
+jal printNum
+li $a1 12
+li $a2 6
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a2 $a2 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+addi $a1 $a1 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a2 $a2 1
+jal printColorAtPosition
+subi $a1 $a1 1
+jal printColorAtPosition
+li $a1 15
+li $a2 9
+jal printColorAtPosition
+lw $ra ($sp)
+addu $sp $sp 4
 jr $ra
