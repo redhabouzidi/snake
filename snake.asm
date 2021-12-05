@@ -426,52 +426,61 @@ j SMloop
 
 endSMloop:
 jr $ra
-
+################################ getLevel #################################
+# ParamÃ¨tres: Aucun
+#La fonction affiche les niveau , et les change en fonction du choix de l'utilisateur
+#la fonction place également les obstacles de façon aléatoire
+# Retour: Aucun
+################################################################################
 getLevel:
-subu $sp $sp 4
-sw $ra ($sp)
+subu $sp $sp				
+sw $ra ($sp)					#range la valeur $ra
 reset:
-li $a0 100
+li $a0 50					#on utilise la fonction sleep pour ne pas surcharger le processeur
 jal sleepMillisec
+lw $t0 0xffff0004				#on charge dans $t0 l'entrée 
+beqz $t0 reset					#on boucle sur reset jusqu'a que l'entrée soit differente de 0
 jal resetAffichage
-bne $s6 0 l2
-jal printLevel1
-j read
-l2:bne $s6 1 l3
-jal printLevel2
-j read
-l3:bne $s6 2 l4
-jal printLevel3
-j read
-l4:bne $s6 3 l5
-jal printLevel4
-j read
-l5:bne $s6 4 l6
-jal printLevel5
-j read
-l6:bne $s6 5 l7
-jal printLevel6
-j read
-l7:bne $s6 6 l8
-jal printLevel7
-j read
-l8:bne $s6 7 lQ
-jal printLevel8
-j read
-lQ:
-jal printLevelQ
-j read
-
 
 read:
-lw $t0 0xffff0004
-beq $t0 122 levelHaut#z
+lw $t0 0xffff0004				#on charge dans $t0 l'entrée 
+beq $t0 122 levelHaut#z				#Saut conditionnel correspendante a l'entrée : Z haut S bas Q gauche D droite
 beq $t0 115 levelBas#s
 beq $t0 113 levelGauche #q
 beq $t0 100 levelDroite #d
-beq $t0 10 confirmLevel
+beq $t0 10 confirmLevel				#Confirmation du niveau , entrée dans la partie de construction du niveau
+j printLevels
+printLevels:					#fonction qui dessine les niveaux
+bne $s6 0 l2
+jal printLevel1
 j reset
-confirmLevel:
+l2:bne $s6 1 l3
+jal printLevel2
+j reset
+l3:bne $s6 2 l4
+jal printLevel3
+j reset
+l4:bne $s6 3 l5
+jal printLevel4
+j reset
+l5:bne $s6 4 l6
+jal printLevel5
+j reset
+l6:bne $s6 5 l7
+jal printLevel6
+j reset
+l7:bne $s6 6 l8
+jal printLevel7
+j reset
+l8:bne $s6 7 lQ
+jal printLevel8
+j reset
+lQ:
+jal printLevelQ
+j reset
+
+
+confirmLevel:					#en fonction du choix , met les variables aux valeurs correspendante 
 beq $s6 0 level1
 beq $s6 1 level2
 beq $s6 2 level3
@@ -481,20 +490,20 @@ beq $s6 5 level6
 beq $s6 6 level7
 beq $s6 7 level8
 beq $s6 8 exit
-endLevel:
-subi $t6 $t6 1
-loopLevel:beq $t6 -1 skipLevel
+endLevel:					#place les obstacles
+subi $t6 $t6 1					#nb obstacles - 1
+loopLevel:beq $t6 -1 skipLevel			#condition sortie
 jal newRandomObjectPosition
-mul $t2 $t6 4
-sw $v0 obstaclesPosX($t2)
+mul $t2 $t6 4					#Valeur en octet (nbObstacles*4)
+sw $v0 obstaclesPosX($t2)			
 sw $v1 obstaclesPosY($t2)
-subi $t6 $t6 1
-j loopLevel
+subi $t6 $t6 1					#décrementation
+j loopLevel					#Saut boucle
 skipLevel:
-lw $ra ($sp)
+lw $ra ($sp)				
 addu $sp $sp 4
 jr $ra
-
+						#lecture d'entrée pour changer le niveau
 levelHaut:
 la $t8 0xffff0004
 li $t9 0
@@ -519,51 +528,60 @@ li $t9 0
 sw $t9 ($t8)
 subi $s6 $s6 1
 j test
-
+						#Cas ou les valeurs sont supperieurs aux niveaux disponibles
 test:
 addi $s6 $s6 9
 li $t8 9
 div $s6 $t8
 mfhi $s6
-j reset
-
+j printLevels
+						#chargement des valeurs (nb obstacles et vitesse de jeu)
 level1:
-li $t6 2
+li $s5 500
+li $s3 1
+li $t6 0
 sw $t6 numObstacles
 j endLevel
 level2:
+li $s3 1
 li $s5 450
 li $t6 5
 sw $t6 numObstacles
 j endLevel
 level3:
+li $s3 2
 li $s5 400
 li $t6 3
 sw $t6 numObstacles
 j endLevel
 level4:
+li $s3 3
 li $s5 350
 li $t6 6
 sw $t6 numObstacles
 j endLevel
 level5:
+li $s3 5
 li $s5 300
-li $t6 4
+li $t6 7
 sw $t6 numObstacles
 j endLevel
 level6:
+li $s3 10
 li $s5 250
-li $t6 8
+li $t6 12
 sw $t6 numObstacles
 j endLevel
 level7:
+li $s3 15
 li $s5 200
-li $t6 5
+li $t6 16
 sw $t6 numObstacles
 j endLevel
 level8:
+li $s3 20
 li $s5 150
-li $t6 6
+li $t6 20
 sw $t6 numObstacles
 j endLevel
 
@@ -582,10 +600,10 @@ main:
 
 jal resetAffichage
 jal newRandomObjectPosition
-li $s5 500
+
 sw $v0 candy
 sw $v1 candy + 4
-jal printLevel1
+jal printLevel1						#saut pour choix niveaux
 li $s6 0
 jal getLevel
 jal resetAffichage
@@ -606,7 +624,7 @@ j mainloop
 
 gameOver:
 jal affichageFinJeu
-li $a0 10000
+li $a0 10000					#sleep de 10 s pour permetre de rejouer et reinitialisation des variables aux valeurs initiales
 jal sleepMillisec
 li $t0 0
 li $t1 1
@@ -637,18 +655,18 @@ tailleGrille:  .word 16        # Nombre de case du jeu dans une dimension.
 # La tÃªte du serpent se trouve Ã  (snakePosX[0], snakePosY[0]) et la queue Ã 
 # (snakePosX[tailleSnake - 1], snakePosY[tailleSnake - 1])
 tailleSnake:   .word 1          # Taille actuelle du serpent.
-snakePosX:     .word 0 : 1024  # CoordonnÃ©es X du serpent ordonnÃ© de la tÃªte Ã  la queue.
-snakePosY:     .word 0 : 1024  # CoordonnÃ©es Y du serpent ordonnÃ© de la t.
+snakePosX:     .word 0 : 4096  # CoordonnÃ©es X du serpent ordonnÃ© de la tÃªte Ã  la queue.
+snakePosY:     .word 0 : 4096  # CoordonnÃ©es Y du serpent ordonnÃ© de la t.
 
 # Les directions sont reprÃ©sentÃ©s sous forme d'entier allant de 0 Ã  3:
 snakeDir:      .word 1         # Direction du serpent: 0 (haut), 1 (droite)
                                #                       2 (bas), 3 (gauche)
 numObstacles:  .word 0         # Nombre actuel d'obstacle prÃ©sent dans le jeu.
-obstaclesPosX: .word 0 : 1024  # CoordonnÃ©es X des obstacles
-obstaclesPosY: .word 0 : 1024  # CoordonnÃ©es Y des obstacles
+obstaclesPosX: .word 0 : 4096  # CoordonnÃ©es X des obstacles
+obstaclesPosY: .word 0 : 4096  # CoordonnÃ©es Y des obstacles
 candy:         .word 0, 
 0      # Position du bonbon (X,Y)
-scoreJeu:      .word 2220         # Score obtenu par le joueur
+scoreJeu:      .word 0         # Score obtenu par le joueur
 
 .text
 
@@ -664,50 +682,37 @@ scoreJeu:      .word 2220         # Score obtenu par le joueur
 ################################################################################
 
 majDirection:
-subu $sp $sp 4
+subu $sp $sp 4						#range la valeur $ra
 sw $ra ($sp)
-beq $a0 4 skipDir
+beq $a0 4 skipDir					#lis les valeurs de l'entrée et fait des saut conditionelle pour l'affectation de snake dir
 lw $t1 snakeDir
-beq $t1 0 condHaut
-beq $t1 1 condDroite
-beq $t1 2 condBas
-beq $t1 3 condGauche
+beq $t1 0 condHaut					#Saut test affectation Haut
+beq $t1 1 condDroite					#Saut test affectation Droite
+beq $t1 2 condBas					#Saut test affectation Bas
+beq $t1 3 condGauche					#Saut test affectation Gauche
 
-condHaut:
-beq $a0 2 skipDir
-sw $a0 snakeDir
+condHaut:						#cond Haut :
+beq $a0 2 skipDir					#si l'entrée == Bas : saut fin fonction
+sw $a0 snakeDir						#affectation snakeDir
 j skipDir
 condDroite:
-beq $a0 3 skipDir
-sw $a0 snakeDir
+beq $a0 3 skipDir					#si l'entrée == Gauche : saut fin fonction
+sw $a0 snakeDir						#affectation snakeDir
 j skipDir
 condBas:
-beq $a0 0 skipDir
-sw $a0 snakeDir
+beq $a0 0 skipDir					#si l'entrée == Haut : saut fin fonction
+sw $a0 snakeDir						#affectation snakeDir
 j skipDir
 condGauche:
-beq $a0 1 skipDir
-sw $a0 snakeDir
+beq $a0 1 skipDir					#si l'entrée == Droite : saut fin fonction
+sw $a0 snakeDir						#affectation snakeDir
 j skipDir
 
 skipDir:
 lw $ra ($sp)
 addu $sp $sp 4
-jr $ra
-
-
-
-
-
-
-
-
+jr $ra							#fin fonction
 # En haut, ... en bas, ... Ã  gauche, ... Ã  droite, ... ces soirÃ©es lÃ  ...
-
-
-
-
-
 ############################### updateGameStatus ###############################
 # ParamÃ¨tres: Aucun
 # Retour: Aucun
@@ -720,109 +725,113 @@ jr $ra
 updateGameStatus:
 
 #jal hiddenCheatFunctionDoingEverythingTheProjectDemandsWithoutHavingToWorkOnIt
-subu $sp $sp 4
+subu $sp $sp 4					#range la valeur $ra
 sw $ra ($sp)
 
-jal updateSnake
-lw $t0 snakePosX
-lw $t1 snakePosY
-lw $t2 candy
-lw $t3 candy + 4
-beq $t0 $t2 cond3
+jal updateSnake					#Fonction permetant d'actualiser le corp Entrée : SnakeDir
+lw $t0 snakePosX				#charge dans $t0 la valeur de snakePosX
+lw $t1 snakePosY				#charge dans $t1 la valeur de snakePosY
+lw $t2 candy					#charge dans $t2 la valeur de candy
+lw $t3 candy + 4				#charge dans $t3 la valeur de candy Y
+beq $t0 $t2 cond3				#test si la tête est a la même position qu'au bonbon
 skipGameStatus:
-lw $ra ($sp)
+lw $ra ($sp)					
 addu $sp $sp 4
-jr $ra
+jr $ra						#fin fonction
 cond3:
-beq $t1 $t3 cond4
+beq $t1 $t3 cond4				#test si la tête est a la même position qu'au bonbon (position Y)
 j skipGameStatus
-cond4:
+cond4:						#la tête mange le bonbon
 jal newRandomObjectPosition
 sw $v0 candy
-sw $v1 candy +4
-lw $t4 tailleSnake
+sw $v1 candy +4					#charge de nouvelles valeurs pour candy
+lw $t4 tailleSnake				#charge la taille
 li $t1 4
 mul $t5 $t4 $t1
-lw $t6 lastSnakePiece
+lw $t6 lastSnakePiece				#charge dans la queue la position lastSnakePiece
 sw $t6 snakePosX($t5)
 lw $t6 lastSnakePiece +4
 sw $t6 snakePosY($t5)
-addi $t4 $t4 1
-sw $t4 tailleSnake
-lw $t4 scoreJeu
-addi $t4 $t4 1
+addi $t4 $t4 1			
+sw $t4 tailleSnake				#incremente la taille du serpent
+lw $t4 scoreJeu					#augemente le score
+add $t4 $t4 $s3
 sw $t4 scoreJeu
 
 j skipGameStatus
 
-
+############################### updateCorp ###############################
+# ParamÃ¨tres: Aucun
+# Retour: Aucun
+# Effet de bord: La fonction s'occupe de charger les nouvelles valeurs du serpent
+# de la façon suivante : SnakePosX[i]=snakePosX[i-1] i>0
+################################################################################
 
 updateCorp:
-subu $sp $sp 4
+subu $sp $sp 4					#range la valeur $ra
 sw $ra ($sp)
 
-lw $t6 tailleSnake
+lw $t6 tailleSnake				
 subi $t6 $t6 1
-
 li $t0 4
 la $t1 snakePosX
 la $t2 snakePosY
 
-loop3:beqz $t6 skip3
-mul $t7 $t6 $t0
-add $t8 $t7 $t1
-lw $t9 -4($t8)
-sw $t9 0($t8)
-add $t8 $t7 $t2
-lw $t9 -4($t8)
-sw $t9 0($t8)
-subi $t6 $t6 1
+loop3:beqz $t6 skip3				#boucle , s'occupe de charger les valeurs T[X]=T[X-1]
+mul $t7 $t6 $t0					#$t7 = taille*4
+add $t8 $t7 $t1					#adresse + taille*4
+lw $t9 -4($t8)					#charge dans $t9 T[i-1]
+sw $t9 0($t8)					#charge dans l'adresse T[i-1]
+add $t8 $t7 $t2					
+lw $t9 -4($t8)					#charge dans $t9 T[i-1]
+sw $t9 0($t8)					#charge dans l'adresse T[i-1]
+subi $t6 $t6 1					#decrementation
 j loop3
 skip3:
 lw $ra 0($sp)
 addu $sp $sp 4
-jr $ra
+jr $ra						#fin fonction
 
 updateSnake:
-subu $sp $sp 4
-sw $ra ($sp)
-lw $t4 snakePosX
-lw $t5 snakePosY
-jal updateCorp
+subu $sp $sp 4					#range la valeur $ra
+sw $ra ($sp)		
+lw $t4 snakePosX				#charge dans $t4 la valeur snakePosX
+lw $t5 snakePosY				#charge dans $t5 la valeur snakePosY
+jal updateCorp					#saut pour actualiser les valeurs du corp 
 lw $a0 snakeDir
-beq $a0 0 Haut
+beq $a0 0 Haut					#sauts conditionnels , change la position de la tête
 beq $a0 1 Droite
 beq $a0 2 Bas
 beq $a0 3 Gauche
 j End
 
-Haut:
+Haut:						#affecte a snakePosX ou Y les nouvelles coordonées 
 
 addi $t4 $t4 -1
-sw $t4 snakePosX
+sw $t4 snakePosX				#snakePosX--
 j End
 
 Droite:
 addi $t5 $t5 1
-sw $t5 snakePosY
+sw $t5 snakePosY				#snakePosY++
 j End
 
 Bas:
 
 addi $t4 $t4 1
-sw $t4 snakePosX
+sw $t4 snakePosX				#snakePosX++
 j End
 
 Gauche:
 
 addi $t5 $t5 -1
-sw $t5 snakePosY
+sw $t5 snakePosY				#snakePosY--
 
 End:
 
 lw $ra ($sp)
 addu $sp $sp 4
-jr $ra
+jr $ra							#fin fonction
 ############################### conditionFinJeu ################################
 # ParamÃ¨tres: Aucun
 # Retour: $v0 La valeur 0 si le jeu doit continuer ou toute autre valeur sinon.
@@ -830,69 +839,67 @@ jr $ra
 
 conditionFinJeu:
 
-# Aide: Remplacer cette instruction permet d'avancer dans le projet.
-subu $sp $sp 4
+subu $sp $sp 4						#range la valeur $ra
 sw $ra ($sp)
-li $v0 0
-li $t0 16
+li $v0 0						#charge dans $v0 0 pour ne pas finir le jeu	
+li $t0 16						#charge dans $t0 la valeur 16 pour tester les conditions de bords 
 lw $t1 snakePosY
-beq $t1 $t0 jEndCond
-li $t0 -1
-beq $t1 $t0 jEndCond 
+beq $t1 $t0 jEndCond					#test si snakePosY a attein le bord
+li $t0 -1						#charge dans $t0 la valeur -1 pour tester les conditions de bords 
+beq $t1 $t0 jEndCond 					#test si snakePosY a attein le bord
 lw $t2 snakePosX
-beq $t2 $t0 jEndCond
-li $t0 16
-beq $t2 $t0 jEndCond
-jal condObstacles
-jal condCorp
+beq $t2 $t0 jEndCond					#test si snakePosX a attein le bord
+li $t0 16						#charge dans $t0 la valeur 16 pour tester les conditions de bords 
+beq $t2 $t0 jEndCond					#test si snakePosX a attein le bord
+jal condObstacles					#saut test obstacle
+jal condCorp						#saut test snake mange son propre corp
 jProcCond:
 lw $ra ($sp)
 addu $sp $sp 4
-jr $ra
+jr $ra							#fin fonction
 
-jEndCond:li $v0 1
+jEndCond:li $v0 1					#charge dans $v0 1 pour faire une fin de partie
 j jProcCond
 
 condObstacles: 
-lw $t0 numObstacles
-subu $t0 $t0 1
+lw $t0 numObstacles					#chargement nombre d'obstacles
+subu $t0 $t0 1						#numObstaclsee -1
 li $t3 4
-li $t7 -1
-loopObst:beq $t0 $t7 endNumObst
-mul $t4 $t0 $t3
-lw $t5 obstaclesPosX($t4)
-lw $t4 obstaclesPosY($t4)
-beq $t5 $t2 secondCondObst
-subu $t0 $t0 1
+loopObst:beq $t0 -1 endNumObst				#Condition d'arrêt $t0==-1
+mul $t4 $t0 $t3						#numObstacles * 4 
+lw $t5 obstaclesPosX($t4)				#acces a l'obstacles numobstacles
+lw $t4 obstaclesPosY($t4)				#acces a l'obstacles numobstacles
+beq $t5 $t2 secondCondObst				#test premiére condition
+subu $t0 $t0 1						#decrementation du compteur
 j loopObst
-secondCondObst:beq $t4 $t1 finCondObst
-subu $t0 $t0 1
+secondCondObst:beq $t4 $t1 finCondObst			#seconde condition d'arrêt
+subu $t0 $t0 1						#decrementation du compteur
 j loopObst
-endNumObst:
+endNumObst:						#fin de fonction
 jr $ra
-finCondObst:
+finCondObst:						#charge dans $v0 1 pour faire une fin de partie
 li $v0 1
 j endNumObst
 
-condCorp:
-subu $sp $sp 4
+condCorp:						#fonction s'occupant de verifier si la tête a la même position qu'un element du corp
+subu $sp $sp 4						#range le registre $ra
 sw $ra ($sp)
-lw $t3 tailleSnake
-subu $t3 $t3 1
+lw $t3 tailleSnake					#charge la taille du serpent
+subu $t3 $t3 1						#tailleSnake - 1
 li $t5 4
-loopCond:blt $t3 $t5 condContinue
-mul $t6 $t5 $t3
-lw $t7 snakePosX($t6)
-beq $t2 $t7 condArret
+loopCond:blt $t3 $t5 condContinue			#condition de sortie : taille du snake <4
+mul $t6 $t5 $t3						#$t6 = 4 * taillesnake
+lw $t7 snakePosX($t6)					#charger la posX de l'element I
+beq $t2 $t7 condArret					#premiére comparaison avec posX et posX de l'element I
 jSuite:
-subu $t3 $t3 1
+subu $t3 $t3 1						#décrementation
 j loopCond
 condContinue:
 lw $ra ($sp)
 addu $sp $sp 4
-jr $ra
+jr $ra							#fin fonction
 
-condArret:
+condArret:						#deuxiéme comparaison avec posY et posY de l'element I
 lw $t7 snakePosY($t6)
 beq $t1 $t7 Arret
 j jSuite
@@ -909,19 +916,25 @@ j condContinue
 # Bonus: Afficher le score en surimpression du jeu.
 ################################################################################
 
-affichageFinJeu:
-subu $sp $sp 4
+affichageFinJeu:					#fonction d'affichage du score :
+subu $sp $sp 4						#ranger $ra
 sw $ra ($sp)
-jal resetAffichage
-lw $a0 colors + greenV2
-li $a1 0
+jal resetAffichage					#vide l'écran
+lw $a0 colors + yellow					#choix de la couleur du score 
+li $a1 0						#la fonction affiche score pixel par pixel en utilisant les position a1 et a2
 li $a2 0
 jal printColorAtPosition
 li $a2 1
 jal printColorAtPosition
+li $a2 3
+jal printColorAtPosition
 li $a2 4
 jal printColorAtPosition
+li $a2 6
+jal printColorAtPosition
 li $a2 7
+jal printColorAtPosition
+li $a2 8
 jal printColorAtPosition
 li $a2 10
 jal printColorAtPosition
@@ -989,9 +1002,15 @@ li $a2 0
 jal printColorAtPosition
 li $a2 1
 jal printColorAtPosition
+li $a2 3
+jal printColorAtPosition
 li $a2 4
 jal printColorAtPosition
+li $a2 6
+jal printColorAtPosition
 li $a2 7
+jal printColorAtPosition
+li $a2 8
 jal printColorAtPosition
 li $a2 10
 jal printColorAtPosition
@@ -1000,12 +1019,12 @@ jal printColorAtPosition
 li $a2 14
 jal printColorAtPosition
 li $a2 15
-jal printColorAtPosition
+jal printColorAtPosition		#__________________________________________________________________________________________________________________________ fin de l'affichage score
 li $t2 0
-li $a1 8
-lw $t1 scoreJeu
-lw $a0 colors+green
-back:div $t1 $t1 10
+li $a1 8			
+lw $t1 scoreJeu				#charger la valeur du score
+lw $a0 colors+green			#choix de la coueur du score 
+back:div $t1 $t1 10				
 bgtz $t1 increment
 beq $t2 0 choix0
 beq $t2 1 choix1
@@ -1367,59 +1386,7 @@ li $a2 0
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1433,59 +1400,7 @@ li $a2 4
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1499,59 +1414,7 @@ li $a2 8
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1565,59 +1428,7 @@ li $a2 12
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1631,59 +1442,7 @@ li $a2 0
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1697,59 +1456,7 @@ li $a2 4
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1763,59 +1470,7 @@ li $a2 8
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1829,59 +1484,7 @@ li $a2 12
 lw $a0 colors+red
 li $a3 -1
 jal printNum
-lw $a0 colors+green
-li $a1 0
-li $a2 0
-li $a3 1
-jal printNum
-li $a1 0
-li $a2 4
-li $a3 2
-jal printNum
-li $a1 0
-li $a2 8
-li $a3 3
-jal printNum
-li $a1 0
-li $a2 12
-li $a3 4
-jal printNum
-li $a1 6
-li $a2 0
-li $a3 5
-jal printNum
-li $a1 6
-li $a2 4
-li $a3 6
-jal printNum
-li $a1 6
-li $a2 8
-li $a3 7
-jal printNum
-li $a1 6
-li $a2 12
-li $a3 8
-jal printNum
-li $a1 12
-li $a2 6
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a2 $a2 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-addi $a1 $a1 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a2 $a2 1
-jal printColorAtPosition
-subi $a1 $a1 1
-jal printColorAtPosition
-li $a1 15
-li $a2 9
-jal printColorAtPosition
+jal printLevelGen
 lw $ra ($sp)
 addu $sp $sp 4
 jr $ra
@@ -1895,6 +1498,15 @@ li $a2 6
 lw $a0 colors+red
 li $a3 -1
 jal printNum
+jal printLevelGen
+lw $ra ($sp)
+addu $sp $sp 4
+jr $ra
+
+
+printLevelGen:
+subu $sp $sp 4
+sw $ra ($sp)
 lw $a0 colors+green
 li $a1 0
 li $a2 0
